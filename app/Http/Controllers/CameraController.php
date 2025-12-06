@@ -15,9 +15,9 @@ class CameraController extends Controller
         $roleName = $user->role->name ?? 'user';
         $query = Camera::with('user');
 
-        // 1. ADMIN y MANTENIMIENTO: Ven TODAS las cámaras
-        if ($roleName === 'admin' || $roleName === 'mantenimiento') {
-            // No aplicamos filtro
+        // 1. SOLO ADMIN: Ve TODAS las cámaras
+        if ($roleName === 'admin') {
+            // No aplicamos filtro, ve todo
         }
         // 2. SUPERVISOR: Ve las suyas + las de sus subordinados
         elseif ($roleName === 'supervisor') {
@@ -27,7 +27,7 @@ class CameraController extends Controller
                     ->orWhereIn('user_id', $subordinateIds);
             });
         }
-        // 3. USUARIO: Solo ve las suyas
+        // 3. MANTENIMIENTO Y USUARIO: Solo ven las que el admin les haya asignado (su user_id)
         else {
             $query->where('user_id', $user->id);
         }
@@ -38,11 +38,22 @@ class CameraController extends Controller
 
     public function create()
     {
-        // Admin y Mantenimiento pueden asignar dueño
         $userRole = Auth::user()->role->name;
-        $users = ($userRole === 'admin' || $userRole === 'mantenimiento') ? User::all() : [];
+
+        // SOLO Admin puede ver la lista para asignar dueño manualmente al inicio
+        $users = ($userRole === 'admin') ? \App\Models\User::all() : [];
 
         return view('cameras.create', compact('users'));
+    }
+
+    public function edit(Camera $camera)
+    {
+        $userRole = Auth::user()->role->name;
+
+        // SOLO Admin puede reasignar dueño
+        $users = ($userRole === 'admin') ? \App\Models\User::all() : [];
+
+        return view('cameras.edit', compact('camera', 'users'));
     }
 
     public function store(Request $request)
@@ -56,12 +67,25 @@ class CameraController extends Controller
             'user_id'  => 'nullable|exists:users,id'
         ]);
 
-        $userRole = Auth::user()->role->name;
-        $ownerId = Auth::id();
+        $user = Auth::user();
+        $roleName = $user->role->name;
 
-        // Si es Admin o Mantenimiento y seleccionó un usuario, asignamos ese dueño
-        if (($userRole === 'admin' || $userRole === 'mantenimiento') && !empty($request->user_id)) {
-            $ownerId = $request->user_id;
+        // Lógica de asignación de dueño
+        if ($roleName === 'admin') {
+            // Admin puede elegir a cualquiera, o asignársela a sí mismo si no eligió nada
+            $ownerId = !empty($request->user_id) ? $request->user_id : $user->id;
+        } elseif ($roleName === 'mantenimiento') {
+            // MANTENIMIENTO: Se asigna AUTOMÁTICAMENTE al Admin principal
+            // Buscamos al primer usuario con rol 'admin'
+            $adminUser = \App\Models\User::whereHas('role', function ($q) {
+                $q->where('name', 'admin');
+            })->first();
+
+            // Si por alguna razón no hay admin, fallback al usuario actual (pero esto no debería pasar)
+            $ownerId = $adminUser ? $adminUser->id : $user->id;
+        } else {
+            // Otros roles (si tuvieran permiso de crear): Se asignan a sí mismos
+            $ownerId = $user->id;
         }
 
         Camera::create([
@@ -69,8 +93,8 @@ class CameraController extends Controller
             'user_id' => $ownerId,
         ]);
 
-        // Redirección dinámica
-        $prefix = match ($userRole) {
+        // Redirección
+        $prefix = match ($roleName) {
             'admin' => 'admin.',
             'supervisor' => 'supervisor.',
             'mantenimiento' => 'mantenimiento.',
@@ -86,15 +110,7 @@ class CameraController extends Controller
         return view('cameras.show', compact('camera'));
     }
 
-    public function edit(Camera $camera)
-    {
-        $userRole = Auth::user()->role->name;
-
-        // Admin y Mantenimiento pueden reasignar dueño
-        $users = ($userRole === 'admin' || $userRole === 'mantenimiento') ? User::all() : [];
-
-        return view('cameras.edit', compact('camera', 'users'));
-    }
+    
 
     public function update(Request $request, Camera $camera)
     {
