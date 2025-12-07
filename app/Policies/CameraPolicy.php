@@ -8,7 +8,8 @@ use App\Models\User;
 class CameraPolicy
 {
     /**
-     * Determina si el usuario puede ver la lista de cámaras.
+     * ¿Quién puede ver la lista de cámaras?
+     * Todos pueden entrar, el filtro de qué ven se hace en la vista.
      */
     public function viewAny(User $user): bool
     {
@@ -16,67 +17,67 @@ class CameraPolicy
     }
 
     /**
-     * Determina si el usuario puede ver una cámara específica.
+     * ¿Quién puede ver una cámara específica?
      */
     public function view(User $user, Camera $camera): bool
     {
         $role = $user->role->name ?? '';
 
-        // SOLO Admin ve todo sin restricciones
+        // 1. ADMIN: Ve todo
         if ($role === 'admin') {
             return true;
         }
 
-        // Supervisor: ve las suyas y las de sus subordinados
+        // 2. SUPERVISOR: Ve las suyas y las de sus subordinados
         if ($role === 'supervisor') {
             $subordinateIds = $user->subordinates()->pluck('id')->toArray();
             return $camera->user_id === $user->id || in_array($camera->user_id, $subordinateIds);
         }
 
-        // Usuario Normal y Mantenimiento:
-        // Solo pueden verla si se les ha asignado explícitamente (son el user_id de la cámara)
+        // 3. MANTENIMIENTO Y USER: Solo ven si son los dueños (asignados por admin)
         return $user->id === $camera->user_id;
     }
 
     /**
-     * Determina si el usuario puede crear cámaras.
+     * ¿Quién puede CREAR?
+     * AHORA: Admin Y Mantenimiento.
      */
     public function create(User $user): bool
     {
-        return true;
+        $role = $user->role->name ?? '';
+        return in_array($role, ['admin', 'mantenimiento']);
     }
 
     /**
-     * Determina si el usuario puede actualizar la cámara.
+     * ¿Quién puede EDITAR?
+     * AHORA: Admin (todo) Y Mantenimiento (solo las suyas).
+     * Supervisor y User: NO.
      */
     public function update(User $user, Camera $camera): bool
     {
         $role = $user->role->name ?? '';
 
-        // SOLO Admin puede editar cualquier cámara
+        // Admin edita cualquiera
         if ($role === 'admin') {
             return true;
         }
 
-        // Supervisor: Lógica personalizada si permites que editen (opcional)
-        // Por ahora, asumimos que solo pueden editar si son los dueños directos
-        // o si permites que editen las de sus subordinados.
-        if ($role === 'supervisor') {
-            // Ejemplo: Solo edita las suyas, no las de subordinados
+        // Mantenimiento edita SOLO si es su cámara (asignada/creada por él)
+        if ($role === 'mantenimiento') {
             return $user->id === $camera->user_id;
         }
 
-        // Usuario Normal y Mantenimiento:
-        // Solo pueden editar si son los dueños (se les asignó la cámara)
-        return $user->id === $camera->user_id;
+        // Supervisor y User no pueden editar
+        return false;
     }
 
     /**
-     * Determina si el usuario puede eliminar la cámara.
+     * ¿Quién puede ELIMINAR?
+     * Por seguridad, dejaremos esto SOLO al Admin.
+     * (Si quieres que mantenimiento borre, avísame).
      */
     public function delete(User $user, Camera $camera): bool
     {
-        // Solo el admin puede eliminar
-        return $user->role->name === 'admin';
+        return ($user->role->name ?? '') === 'admin';
     }
 }

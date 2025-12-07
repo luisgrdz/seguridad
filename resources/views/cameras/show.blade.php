@@ -3,12 +3,11 @@
 @section('titulo', 'Monitor en Vivo')
 
 @section('contenido')
-<div class="max-w-6xl mx-auto mt-6">
+<div class="max-w-7xl mx-auto mt-6 px-4">
 
     @php
         $userRole = Auth::user()->role->name ?? 'user';
         
-        // Definir prefijo de ruta para los botones de acción
         $prefix = match($userRole) {
             'admin' => 'admin.',
             'supervisor' => 'supervisor.',
@@ -16,60 +15,61 @@
             default => 'user.',
         };
         
-        // --- LÓGICA INTELIGENTE PARA LA URL ---
         $ip = trim($camera->ip);
-        
-        if (str_starts_with($ip, 'http')) {
-            $streamUrl = $ip;
+        $streamUrl = '';
+        $isYoutube = false;
+
+        // --- 1. LÓGICA YOUTUBE ---
+        if (str_contains($ip, 'youtube.com') || str_contains($ip, 'youtu.be')) {
+            $isYoutube = true;
+            preg_match('/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/', $ip, $matches);
+            $videoId = $matches[1] ?? null;
+            
+            // Parametros para "kiosko mode": autoplay, mute, sin controles, sin teclado, loop
+            if($videoId) {
+                $streamUrl = "https://www.youtube.com/embed/{$videoId}?autoplay=1&mute=1&controls=0&disablekb=1&modestbranding=1&showinfo=0&rel=0&loop=1&playlist={$videoId}";
+            }
         } 
-        elseif (str_contains($ip, ':8080')) {
-            $streamUrl = "http://{$ip}/video";
-        }
+        // --- 2. LÓGICA IP WEBCAM (Celular Android) ---
+        // Si tiene el puerto 8080 O si es una IP "pelada" (sin http ni puerto 81)
+        elseif (str_contains($ip, ':8080') || (!str_contains($ip, 'http') && !str_contains($ip, ':81'))) {
+            // Limpiamos por si acaso puso http o /video, queremos la IP pura
+            $cleanIp = str_replace(['http://', 'https://', '/video'], '', $ip);
+            // Reconstruimos la URL correcta para la APP
+            $streamUrl = "http://{$cleanIp}:8080/video"; 
+        } 
+        // --- 3. OTROS (ESP32, Hikvision, etc) ---
         else {
-            $streamUrl = "http://{$ip}:81/stream";
+            if (str_starts_with($ip, 'http')) {
+                $streamUrl = $ip;
+            } else {
+                $streamUrl = "http://{$ip}:81/stream"; // Default ESP32
+            }
         }
     @endphp
 
-    {{-- Lógica para ocultar video a Mantenimiento --}}
-    @if($userRole === 'mantenimiento')
-        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r shadow-sm">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm text-yellow-700">
-                        <strong class="font-bold">Modo Mantenimiento:</strong> 
-                        Tienes permisos para editar la configuración técnica, pero el acceso al video en vivo está restringido por políticas de seguridad.
-                    </p>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    {{-- HEADER --}}
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b pb-4">
         <div>
-            <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-2">
-                {{ $camera->name }}
-                <span class="px-3 py-1 text-xs rounded-full {{ $camera->status ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200' }}">
+            <div class="flex items-center gap-3">
+                <h1 class="text-3xl font-bold text-gray-900">{{ $camera->name }}</h1>
+                <span class="px-3 py-1 text-xs font-bold rounded-full {{ $camera->status ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200' }}">
                     {{ $camera->status ? 'EN LÍNEA' : 'OFFLINE' }}
                 </span>
-            </h1>
-            <p class="text-gray-500 text-sm mt-1 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                {{ $camera->location ?? 'Ubicación no definida' }} 
-                <span class="text-gray-300">|</span>
-                <span class="font-mono bg-gray-100 px-1 rounded text-gray-600 border border-gray-200">{{ $camera->ip }}</span>
+            </div>
+            <p class="text-gray-500 text-sm mt-1">
+                @if($isYoutube)
+                    <span class="text-red-500 font-bold flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+                        Simulación
+                    </span> 
+                @else
+                    Visualización IP • ID: #{{ $camera->id }}
+                @endif
             </p>
         </div>
 
         <div class="flex gap-3">
-            {{-- BOTÓN VOLVER UNIVERSAL --}}
             <a href="{{ route($prefix . 'cameras.index') }}" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors shadow-sm flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -77,112 +77,142 @@
                 Volver
             </a>
 
-            {{-- BOTÓN CONFIGURAR (Solo Admin y Mantenimiento) --}}
-            @if($userRole === 'admin' || $userRole === 'mantenimiento')
+            {{-- Botón Reportar (Nueva pestaña) --}}
+            <a href="{{ route('incidents.create', $camera->id) }}" target="_blank" class="px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 font-medium transition-colors shadow-sm flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Reportar Fallo
+            </a>
+
+            @can('update', $camera)
                 <a href="{{ route($prefix . 'cameras.edit', $camera) }}" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-md transition-all flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     Configurar
                 </a>
-            @endif
+            @endcan
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
+        {{-- COLUMNA IZQUIERDA: VIDEO --}}
         <div class="lg:col-span-2 space-y-4">
-            {{-- CONTENEDOR DE VIDEO --}}
-            <div class="bg-black rounded-xl overflow-hidden shadow-2xl border-4 border-gray-800 relative group aspect-video flex items-center justify-center">
-                @if($userRole === 'mantenimiento')
-                    {{-- Placeholder para Mantenimiento --}}
-                    <div class="text-center p-10">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                        </svg>
-                        <h3 class="text-gray-400 font-medium text-lg">Vista previa deshabilitada</h3>
-                        <p class="text-gray-600 text-sm mt-2">Tu rol no tiene permisos de visualización en vivo.</p>
-                    </div>
-                @elseif($camera->status)
-                    <img 
-                        src="{{ $streamUrl }}" 
-                        class="w-full h-full object-contain bg-black"
-                        alt="Video en vivo de {{ $camera->name }}"
-                        onerror="document.getElementById('video-error').classList.remove('hidden'); this.style.display='none';"
-                    >
-
-                    <div id="video-error" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white p-6 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-red-500 mb-3">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                        </svg>
-                        <h3 class="text-xl font-bold mb-1">No se puede conectar a la cámara</h3>
-                        <p class="text-gray-400 mb-4">Intentando conectar a: <br><span class="font-mono bg-gray-800 px-2 py-1 rounded text-sm text-yellow-500">{{ $streamUrl }}</span></p>
-                        <div class="text-left text-sm bg-gray-800 p-4 rounded border border-gray-700 inline-block">
-                            <p class="font-bold text-gray-300 mb-2">Posibles soluciones:</p>
-                            <ul class="list-disc pl-4 space-y-1 text-gray-400">
-                                <li>Asegúrate de que el celular tenga la app abierta.</li>
-                                <li>Verifica que tu PC y el celular estén en la <strong>misma red Wi-Fi</strong>.</li>
-                                <li>Revisa si la IP ha cambiado en la app del celular.</li>
-                            </ul>
+            <div class="bg-black rounded-xl overflow-hidden shadow-xl border border-gray-800 relative group aspect-video flex items-center justify-center">
+                
+                @if($camera->status)
+                    
+                    {{-- SI ES YOUTUBE --}}
+                    @if($isYoutube)
+                        <div class="absolute inset-0 z-20 w-full h-full bg-transparent"></div>
+                        
+                        <iframe 
+                            src="{{ $streamUrl }}" 
+                            title="Cam Feed" 
+                            class="w-full h-full pointer-events-none" {{-- pointer-events-none extra seguridad --}}
+                            frameborder="0" 
+                            allow="autoplay; encrypted-media;">
+                        </iframe>
+                    
+                    {{-- SI ES CAMARA REAL (IP WEBCAM) --}}
+                    @else
+                        <img 
+                            id="live-stream"
+                            src="{{ $streamUrl }}" 
+                            class="w-full h-full object-contain bg-black"
+                            alt="Video en vivo"
+                            onerror="handleVideoError(this)"
+                        >
+                        {{-- Error Overlay --}}
+                        <div id="video-error" class="hidden absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white p-6 text-center z-10">
+                            <h3 class="text-lg font-bold text-red-500">Sin Señal</h3>
+                            <p class="text-gray-400 text-sm mb-4">Verifique que la App IP Webcam esté iniciada en la IP: <br><span class="font-mono text-yellow-400">{{ $ip }}</span></p>
+                            <button onclick="location.reload()" class="px-4 py-2 bg-gray-800 rounded text-sm hover:bg-gray-700">Reintentar</button>
                         </div>
-                    </div>
+                    @endif
 
-                    <div class="absolute top-4 left-4 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded animate-pulse shadow-lg">
-                        ● EN VIVO
+                    {{-- Indicador LIVE (común para ambos) --}}
+                    <div class="absolute top-4 left-4 flex gap-2 z-30 pointer-events-none">
+                        <span class="bg-red-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded animate-pulse shadow-lg backdrop-blur-sm">● LIVE</span>
+                        <span class="bg-black/50 text-white text-[10px] font-mono px-2 py-0.5 rounded backdrop-blur-sm">{{ date('H:i:s') }}</span>
                     </div>
                 @else
-                    <div class="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mb-2 opacity-25">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18" />
+                    <div class="flex flex-col items-center justify-center text-gray-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 mb-2 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                         </svg>
-                        <span class="font-medium text-lg">Cámara desactivada</span>
+                        <span class="text-lg font-medium">Cámara Desconectada</span>
                     </div>
                 @endif
             </div>
         </div>
 
+        {{-- COLUMNA DERECHA: INFO --}}
         <div class="space-y-6">
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Información Técnica</h3>
-                
-                <div class="space-y-4">
-                    <div>
-                        <label class="text-xs font-bold text-gray-400 uppercase">Grupo de Vigilancia</label>
-                        <p class="text-gray-700 font-medium">{{ $camera->group ?? 'General' }}</p>
-                    </div>
-                    
-                    <div>
-                        <label class="text-xs font-bold text-gray-400 uppercase">Última Actualización</label>
-                        <p class="text-gray-700 text-sm">{{ $camera->updated_at->diffForHumans() }}</p>
-                    </div>
-
-                    <div class="pt-2">
-                        <a href="{{ $streamUrl }}" target="_blank" class="text-sm text-blue-600 hover:underline flex items-center gap-1">
-                            Abrir stream en pestaña nueva
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                            </svg>
-                        </a>
-                    </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="bg-gray-50 px-5 py-3 border-b border-gray-200">
+                    <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wider">Detalles del Dispositivo</h3>
                 </div>
-            </div>
-
-            <div class="bg-blue-50 p-5 rounded-xl border border-blue-100">
-                <div class="flex items-start gap-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-blue-600 mt-1">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-                    </svg>
-                    <div>
-                        <h4 class="font-bold text-blue-900 text-sm">¿Usando un celular?</h4>
-                        <p class="text-blue-800 text-xs mt-1 leading-relaxed">
-                            Si usas la app <strong>IP Webcam</strong>, asegúrate de que al crear la cámara hayas puesto la dirección completa así: <br>
-                            <span class="font-mono bg-white/50 px-1 rounded text-blue-950">http://192.168.X.X:8080/video</span>
-                        </p>
+                
+                <div class="p-5 space-y-5">
+                    
+                    {{-- Ubicación --}}
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 font-bold uppercase">Ubicación Física</p>
+                            <p class="text-gray-900 font-medium">{{ $camera->location ?? 'No especificada' }}</p>
+                        </div>
                     </div>
+
+                    {{-- Zona --}}
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 font-bold uppercase">Zona / Grupo</p>
+                            <p class="text-gray-900 font-medium">{{ $camera->group ?? 'General' }}</p>
+                        </div>
+                    </div>
+
+                    {{-- IP --}}
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-gray-50 text-gray-600 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                            </svg>
+                        </div>
+                        <div class="overflow-hidden w-full">
+                            <p class="text-xs text-gray-500 font-bold uppercase">Enlace Fuente</p>
+                            <a href="{{ $isYoutube ? $ip : $streamUrl }}" target="_blank" class="text-sm text-blue-600 hover:underline truncate block" title="{{ $ip }}">
+                                {{ Str::limit($ip, 25) }}
+                            </a>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    function handleVideoError(img) {
+        // Solo mostramos error si NO es YouTube
+        document.getElementById('video-error').classList.remove('hidden');
+        img.style.display = 'none';
+    }
+</script>
+
 @endsection

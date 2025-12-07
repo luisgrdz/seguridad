@@ -85,25 +85,18 @@
 
 <body>
 
-    <!-- ========================================== -->
-    <!-- NUEVO: Overlay de Carga Logout (Oculto) -->
-    <!-- ========================================== -->
     <div id="logout-overlay" class="fixed inset-0 bg-white/60 backdrop-blur-sm z-[100] hidden flex-col justify-center items-center transition-all duration-300">
         <div class="relative">
-            <!-- Spinner animado -->
             <div class="w-16 h-16 border-4 border-indigo-200 border-dashed rounded-full animate-spin"></div>
             <div class="absolute top-0 left-0 w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
         <h2 class="mt-4 text-lg font-semibold text-indigo-700 animate-pulse">Cerrando sesión...</h2>
     </div>
-    <!-- ========================================== -->
 
-    <!-- NAV -->
     <nav class="nav-glass shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-20 items-center">
 
-                <!-- LOGO -->
                 <div class="flex items-center gap-2">
                     <span class="text-3xl">📹</span>
                     <div class="flex flex-col">
@@ -117,7 +110,6 @@
                 @auth
                 <div class="flex items-center gap-4 sm:gap-6">
                     
-                    {{-- LÓGICA DE RUTAS SEGÚN ROL --}}
                     @php
                         $userRole = Auth::user()->role->name ?? 'user';
                         
@@ -136,17 +128,14 @@
                         };
                     @endphp
 
-                    <!-- Enlace Inicio -->
                     <a href="{{ $dashboardRoute }}" class="nav-link-custom hidden sm:block {{ request()->routeIs('*.dashboard') ? 'active' : '' }}">
                         Inicio
                     </a>
 
-                    <!-- Enlace Cámaras -->
                     <a href="{{ $camerasRoute }}" class="nav-link-custom hidden sm:block {{ request()->routeIs('*.cameras.*') ? 'active' : '' }}">
                         Cámaras
                     </a>
 
-                    <!-- Enlace Personal (Solo Admin) -->
                     @if($userRole === 'admin')
                         <a href="{{ route('admin.personal.index') }}" class="nav-link-custom hidden sm:block {{ request()->routeIs('admin.personal.*') ? 'active' : '' }}">
                             Personal
@@ -155,7 +144,27 @@
 
                     <div class="h-6 w-px bg-gray-300 hidden sm:block"></div>
 
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-4">
+                        
+                        @if($userRole !== 'user')
+                            @php
+                                // Contar pendientes (simple query para la vista)
+                                $pendingCount = \App\Models\Incident::where('status', 'pendiente')->count();
+                            @endphp
+                            
+                            <a href="{{ route('incidents.index') }}" class="relative p-2 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-full transition-colors" title="Incidencias">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                                
+                                @if($pendingCount > 0)
+                                    <span class="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white animate-pulse">
+                                        {{ $pendingCount }}
+                                    </span>
+                                @endif
+                            </a>
+                        @endif
+
                         <div class="text-right hidden sm:block leading-tight">
                             <span class="block text-sm font-medium text-gray-700">
                                 {{ Auth::user()->name }}
@@ -165,8 +174,6 @@
                             </span>
                         </div>
                         
-                        <!-- BOTÓN CERRAR SESIÓN -->
-                        <!-- Se agregó ID id="logout-form" -->
                         <form id="logout-form" action="{{ route('logout') }}" method="POST">
                             @csrf
                             <button type="submit" class="btn-gradient text-sm">
@@ -180,7 +187,6 @@
         </div>
     </nav>
 
-    <!-- CONTENIDO -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         
         @if(session('success'))
@@ -198,22 +204,15 @@
         @yield('contenido')
     </main>
 
-    <!-- Script para manejar la animación de Logout -->
     <script>
         const logoutForm = document.getElementById('logout-form');
         if(logoutForm) {
             logoutForm.addEventListener('submit', function(e) {
-                e.preventDefault(); // Evita el envío inmediato
-                
-                // Muestra el overlay
+                e.preventDefault(); 
                 const overlay = document.getElementById('logout-overlay');
                 overlay.classList.remove('hidden');
                 overlay.classList.add('flex');
-
-                // Espera pequeña para que la animación se renderice bien antes de enviar
-                setTimeout(() => {
-                    this.submit(); // Envía el formulario
-                }, 300); // 300ms de retardo para apreciar la animación
+                setTimeout(() => { this.submit(); }, 300); 
             });
         }
     </script>

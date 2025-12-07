@@ -1,157 +1,145 @@
 @extends('components.layouts.app')
 
-@section('titulo', 'Listado de Cámaras')
+@section('titulo', 'Cámaras')
 
 @section('contenido')
 
 @php
-    $isAdmin = Request::is('admin*');
-    $prefix = $isAdmin ? 'admin.' : (Request::is('supervisor*') ? 'supervisor.' : (Request::is('mantenimiento*') ? 'mantenimiento.' : 'user.'));
+    $userRole = Auth::user()->role->name ?? 'user';
+    $prefix = match($userRole) {
+        'admin' => 'admin.',
+        'supervisor' => 'supervisor.',
+        'mantenimiento' => 'mantenimiento.',
+        default => 'user.',
+    };
 @endphp
 
-<div class="max-w-7xl mx-auto">
-    
-    {{-- Encabezado --}}
-    <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    {{-- HEADER --}}
+    <div class="flex flex-col sm:flex-row justify-between items-end mb-8 gap-4">
         <div>
-            <h1 class="text-3xl font-bold text-gray-800 tracking-tight">Cámaras</h1>
-            <p class="text-gray-500 mt-1">Administración y monitoreo de dispositivos</p>
+            <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Mis Cámaras</h1>
+            <p class="text-gray-500 mt-1 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-green-500"></span> {{ $cameras->where('status', true)->count() }} Online
+                <span class="w-2 h-2 rounded-full bg-red-500 ml-2"></span> {{ $cameras->where('status', false)->count() }} Offline
+            </p>
         </div>
 
-        {{-- Botón Agregar (Visible para Admin y Mantenimiento) --}}
-        @if($isAdmin || Auth::user()->role->name === 'mantenimiento')
-            <a href="{{ route($prefix . 'cameras.create') }}" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-1 flex items-center gap-2 font-semibold">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        @can('create', App\Models\Camera::class)
+            <a href="{{ route($prefix . 'cameras.create') }}" class="group inline-flex items-center justify-center px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-black transition-all shadow-lg shadow-gray-500/30">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-gray-400 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
                 Nueva Cámara
             </a>
-        @endif
+        @endcan
     </div>
 
-    {{-- Tabla / Tarjeta Principal --}}
-    <div class="glass-panel bg-white/80 backdrop-blur-xl border border-white/50 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
+    {{-- GRID DE CÁMARAS --}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         
-        {{-- Decoración superior --}}
-        <div class="h-1.5 w-full bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-500"></div>
+        @forelse($cameras as $camera)
+            @can('view', $camera)
+            <div class="group relative bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-xl hover:border-indigo-100 transition-all duration-300">
+                
+                {{-- Estado (Barra superior de color) --}}
+                <div class="h-1.5 w-full {{ $camera->status ? 'bg-green-500' : 'bg-red-500' }}"></div>
 
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-100">
-                <thead class="bg-gray-50/50">
-                    <tr>
-                        <th scope="col" class="px-8 py-5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Dispositivo</th>
-                        <th scope="col" class="px-8 py-5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Conexión (IP)</th>
-                        <th scope="col" class="px-8 py-5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Ubicación / Grupo</th>
-                        <th scope="col" class="px-8 py-5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Estado</th>
-                        <th scope="col" class="px-8 py-5 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white/40 divide-y divide-gray-100">
-                    @forelse($cameras as $camera)
-                    <tr class="hover:bg-white/80 transition-colors duration-200 group">
+                <div class="p-5">
+                    {{-- Encabezado Card --}}
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="p-2.5 bg-gray-50 rounded-xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </div>
                         
-                        {{-- Nombre --}}
-                        <td class="px-8 py-5 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-500 mr-4 group-hover:bg-indigo-100 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        {{-- Badge Estado --}}
+                        <span class="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide {{ $camera->status ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700' }}">
+                            {{ $camera->status ? 'Online' : 'Offline' }}
+                        </span>
+                    </div>
+
+                    {{-- Info Principal --}}
+                    <h3 class="text-lg font-bold text-gray-900 mb-1 truncate">{{ $camera->name }}</h3>
+                    <p class="text-sm text-gray-500 mb-4 flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        {{ $camera->location ?? 'Sin ubicación' }}
+                    </p>
+
+                    {{-- Detalles Técnicos --}}
+                    <div class="bg-gray-50 rounded-lg p-3 text-xs text-gray-500 space-y-1 mb-4 border border-gray-100">
+                        <div class="flex justify-between">
+                            <span>IP:</span>
+                            <span class="font-mono text-gray-700">{{ $camera->ip }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Encargado:</span>
+                            <span class="font-medium text-gray-700 truncate max-w-[100px]">{{ $camera->user->name ?? '—' }}</span>
+                        </div>
+                    </div>
+
+                    {{-- Botón Principal --}}
+                    <a href="{{ route($prefix . 'cameras.show', $camera) }}" class="block w-full text-center bg-white border border-gray-300 text-gray-700 font-medium py-2 rounded-lg hover:bg-gray-50 hover:text-indigo-600 transition-colors">
+                        Ver Monitor
+                    </a>
+                </div>
+
+                {{-- Acciones Admin (Overlay al Hover) --}}
+                @can('update', $camera)
+                    <div class="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <a href="{{ route($prefix . 'cameras.edit', $camera) }}" class="p-1.5 bg-white text-gray-500 rounded-full shadow hover:text-blue-600" title="Editar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </a>
+                        
+                        @can('delete', $camera)
+                            <form action="{{ route('admin.cameras.destroy', $camera) }}" method="POST" onsubmit="return confirm('¿Eliminar?');">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="p-1.5 bg-white text-gray-500 rounded-full shadow hover:text-red-600" title="Eliminar">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
-                                </div>
-                                <div class="text-sm font-bold text-gray-800">{{ $camera->name }}</div>
-                            </div>
-                        </td>
+                                </button>
+                            </form>
+                        @endcan
+                    </div>
+                @endcan
 
-                        {{-- IP --}}
-                        <td class="px-8 py-5 whitespace-nowrap">
-                            <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-md bg-gray-100 text-gray-600 border border-gray-200 font-mono">
-                                {{ $camera->ip }}
-                            </span>
-                        </td>
-
-                        {{-- Ubicación --}}
-                        <td class="px-8 py-5 whitespace-nowrap">
-                            <div class="text-sm text-gray-600 font-medium">{{ $camera->location ?? '—' }}</div>
-                            <div class="text-xs text-gray-400">{{ $camera->group ?? 'Sin grupo' }}</div>
-                        </td>
-
-                        {{-- Estado --}}
-                        <td class="px-8 py-5 whitespace-nowrap">
-                            @if($camera->status)
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200">
-                                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                                    En Línea
-                                </span>
-                            @else
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200">
-                                    <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
-                                    Offline
-                                </span>
-                            @endif
-                        </td>
-
-                        {{-- Acciones --}}
-                        <td class="px-8 py-5 whitespace-nowrap text-right text-sm font-medium">
-                            <div class="flex justify-end items-center gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
-                                
-                                {{-- Ver --}}
-                                <a href="{{ route($prefix . 'cameras.show', $camera) }}" class="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all" title="Ver Monitor">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 5 8.268 7.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                </a>
-
-                                {{-- Editar (Admin y Mantenimiento) --}}
-                                @if($isAdmin || Auth::user()->role->name === 'mantenimiento')
-                                    <a href="{{ route($prefix . 'cameras.edit', $camera) }}" class="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Configurar">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                    </a>
-                                @endif
-
-                                {{-- Eliminar (Solo Admin) --}}
-                                @if($isAdmin)
-                                    <form action="{{ route('admin.cameras.destroy', $camera) }}" method="POST" class="inline-block" onsubmit="return confirm('¿Estás seguro de eliminar este dispositivo?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Eliminar">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="5" class="px-8 py-12 text-center text-gray-500">
-                            <div class="flex flex-col items-center justify-center">
-                                <div class="bg-gray-50 rounded-full p-4 mb-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                    </svg>
-                                </div>
-                                <p class="text-lg font-medium text-gray-600">No hay cámaras registradas</p>
-                                <p class="text-sm text-gray-400">Comienza agregando un nuevo dispositivo al sistema.</p>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Paginación --}}
-        @if($cameras->hasPages())
-            <div class="bg-gray-50/50 px-8 py-4 border-t border-gray-100">
-                {{ $cameras->links() }}
             </div>
-        @endif
+            @endcan
+        @empty
+            <div class="col-span-full py-16 text-center">
+                <div class="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900">No se encontraron cámaras</h3>
+                <p class="mt-1 text-gray-500">
+                    @if($userRole === 'admin' || $userRole === 'mantenimiento')
+                        Registra un nuevo dispositivo para comenzar.
+                    @else
+                        No tienes dispositivos asignados.
+                    @endif
+                </p>
+            </div>
+        @endforelse
+
     </div>
+
+    {{-- Paginación --}}
+    @if($cameras->hasPages())
+        <div class="mt-8">
+            {{ $cameras->links() }}
+        </div>
+    @endif
+
 </div>
 
 @endsection

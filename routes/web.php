@@ -7,7 +7,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PersonalController;
 use App\Http\Controllers\CameraController;
 use App\Http\Controllers\SupervisorController;
-use App\Models\Camera; // Necesario para el dashboard simple de mantenimiento
+use App\Http\Controllers\IncidentController; // <--- AGREGADO
+use App\Models\Camera;
 
 Route::view('/', 'index')->name('index');
 
@@ -15,6 +16,20 @@ Route::view('/', 'index')->name('index');
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+
+// --- RUTAS GENERALES / COMPARTIDAS (Cualquier usuario logueado) ---
+// Aquí van las incidencias para que todos los roles puedan reportar
+Route::middleware(['auth', 'no_cache'])->group(function () {
+
+    // Formulario de reporte (GET)
+    Route::get('/cameras/{camera}/report', [IncidentController::class, 'create'])
+        ->name('incidents.create');
+
+    // Guardar el reporte (POST)
+    Route::post('/incidents', [IncidentController::class, 'store'])
+        ->name('incidents.store');
+});
 
 
 // --- RUTAS DE ADMINISTRADOR ---
@@ -46,6 +61,8 @@ Route::middleware(['auth', 'no_cache', 'role:user'])
 
         Route::prefix('cameras')->name('cameras.')->group(function () {
             Route::get('/', [CameraController::class, 'index'])->name('index');
+            // Aunque la policy bloquee create/store, las rutas existen para mantener estructura,
+            // pero el controlador y la policy harán el trabajo sucio de seguridad.
             Route::get('/create', [CameraController::class, 'create'])->name('create');
             Route::get('/{camera}/edit', [CameraController::class, 'edit'])->name('edit');
             Route::post('/', [CameraController::class, 'store'])->name('store');
@@ -69,19 +86,21 @@ Route::middleware(['auth', 'no_cache', 'role:supervisor'])
         });
     });
 
-// --- RUTAS DE MANTENIMIENTO (NUEVO) ---
+// --- RUTAS DE MANTENIMIENTO ---
 Route::middleware(['auth', 'no_cache', 'role:mantenimiento'])
     ->prefix('mantenimiento')
     ->name('mantenimiento.')
     ->group(function () {
 
-        // Dashboard simple directamente en la ruta (o puedes crear un controller)
+        // Dashboard simple
         Route::get('/dashboard', function () {
             $totalCameras = Camera::count();
             $offlineCameras = Camera::where('status', false)->count();
             return view('mantenimiento.dashboard', compact('totalCameras', 'offlineCameras'));
         })->name('dashboard');
 
-        // Reutilizamos el CameraController que ya configuramos para manejar permisos
+        // Reutilizamos el CameraController (La Policy filtra qué pueden ver/editar)
         Route::resource('cameras', CameraController::class);
     });
+
+Route::resource('incidents', IncidentController::class);
