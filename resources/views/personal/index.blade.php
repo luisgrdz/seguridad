@@ -43,8 +43,9 @@
                     <td class="p-4 text-gray-600">{{ $user->email }}</td>
                     
                     <td class="p-4">
+                        {{-- AQUI EL CAMBIO: Usamos role_label --}}
                         <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700 border border-gray-200 uppercase tracking-wide">
-                            {{ $user->role->name ?? 'Sin Rol' }}
+                            {{ $user->role_label ?? 'Sin Rol' }}
                         </span>
                     </td>
 

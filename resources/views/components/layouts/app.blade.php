@@ -37,7 +37,6 @@
             z-index: 50;
         }
 
-        /* Enlaces del Nav */
         .nav-link-custom {
             font-weight: 500;
             color: #6b7280;
@@ -53,7 +52,7 @@
             transform: translateY(-1px);
         }
 
-        /* Botón Logout con degradado */
+        /* Botón Logout */
         .btn-gradient {
             background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
             color: white;
@@ -111,8 +110,14 @@
                 <div class="flex items-center gap-4 sm:gap-6">
                     
                     @php
+                        // Variable para LOGICA (Rutas, ifs): Se queda igual (admin, user, etc)
                         $userRole = Auth::user()->role->name ?? 'user';
                         
+                        // Variable para VISUALIZACION (Texto bonito): Usamos el Accessor
+                        // Asegúrate de haber puesto la función getRoleLabelAttribute en User.php
+                        $roleLabel = Auth::user()->role_label ?? ucfirst($userRole);
+
+                        // Rutas según rol
                         $dashboardRoute = match($userRole) {
                             'admin' => route('admin.dashboard'),
                             'supervisor' => route('supervisor.dashboard'),
@@ -146,17 +151,16 @@
 
                     <div class="flex items-center gap-4">
                         
+                        {{-- Notificaciones --}}
                         @if($userRole !== 'user')
                             @php
-                                // Contar pendientes (simple query para la vista)
                                 $pendingCount = \App\Models\Incident::where('status', 'pendiente')->count();
                             @endphp
                             
-                            <a href="{{ route('incidents.index') }}" class="relative p-2 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-full transition-colors" title="Incidencias">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <a href="{{ route('incidents.index') }}" class="relative p-2 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-full transition-colors group" title="Incidencias">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transform group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                 </svg>
-                                
                                 @if($pendingCount > 0)
                                     <span class="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white animate-pulse">
                                         {{ $pendingCount }}
@@ -165,18 +169,26 @@
                             </a>
                         @endif
 
-                        <div class="text-right hidden sm:block leading-tight">
-                            <span class="block text-sm font-medium text-gray-700">
-                                {{ Auth::user()->name }}
-                            </span>
-                            <span class="block text-[10px] text-gray-500 uppercase font-bold tracking-wide">
-                                {{ $userRole }}
-                            </span>
-                        </div>
+                        {{-- ENLACE MI PERFIL (VISUALIZACIÓN CORREGIDA) --}}
+                        <a href="{{ route('profile.edit') }}" class="flex items-center gap-2 group hover:bg-gray-50 rounded-lg p-1 transition-colors" title="Ver mi perfil">
+                            <div class="text-right hidden sm:block leading-tight">
+                                <span class="block text-sm font-medium text-gray-700 group-hover:text-indigo-600 transition-colors">
+                                    {{ Auth::user()->name }}
+                                </span>
+                                {{-- AQUI EL CAMBIO: Usamos $roleLabel en vez de $userRole --}}
+                                <span class="block text-[10px] text-indigo-500 uppercase font-bold tracking-wide">
+                                    {{ $roleLabel }}
+                                </span>
+                            </div>
+                            <div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-sm shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                {{ substr(Auth::user()->name, 0, 1) }}
+                            </div>
+                        </a>
                         
+                        {{-- LOGOUT --}}
                         <form id="logout-form" action="{{ route('logout') }}" method="POST">
                             @csrf
-                            <button type="submit" class="btn-gradient text-sm">
+                            <button type="submit" class="btn-gradient text-sm ml-2">
                                 Salir
                             </button>
                         </form>
@@ -188,7 +200,6 @@
     </nav>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        
         @if(session('success'))
             <div class="mb-6 glass-panel border-l-4 border-green-500 text-green-700 px-4 py-3 rounded-r relative flex items-center gap-3" role="alert">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

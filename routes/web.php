@@ -7,6 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PersonalController;
 use App\Http\Controllers\CameraController;
 use App\Http\Controllers\SupervisorController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\IncidentController; // <--- AGREGADO
 use App\Models\Camera;
 
@@ -29,6 +30,10 @@ Route::middleware(['auth', 'no_cache'])->group(function () {
     // Guardar el reporte (POST)
     Route::post('/incidents', [IncidentController::class, 'store'])
         ->name('incidents.store');
+
+    // RUTAS DE PERFIL
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
 });
 
 

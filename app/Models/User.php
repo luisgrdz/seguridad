@@ -97,4 +97,22 @@ class User extends Authenticatable
             ->take(2)
             ->implode('');
     }
+    /**
+     * ACCESOR: Traduce el rol técnico a un nombre profesional.
+     * Uso en vista: {{ $user->role_label }}
+     */
+    public function getRoleLabelAttribute()
+    {
+        // Si por alguna razón no tiene rol, devuelve 'Usuario'
+        $role = $this->role->name ?? '';
+
+        return match ($role) {
+            'admin'         => 'Administrador General',
+            'supervisor'    => 'Supervisor de Zona',
+            'mantenimiento' => 'Técnico de Soporte',
+            'user'          => 'Guardia de Seguridad', // <--- Aquí el cambio clave
+            default         => ucfirst($role),
+        };
+    }
+
 }

@@ -46,7 +46,6 @@
 
                 <div class="space-y-6">
                     
-                    <!-- Nombre -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Nombre Completo</label>
                         <div class="relative">
@@ -55,7 +54,6 @@
                         </div>
                     </div>
 
-                    <!-- Email -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Correo Electrónico</label>
                         <div class="relative">
@@ -64,17 +62,25 @@
                         </div>
                     </div>
 
-                    <!-- Grid para Rol y Supervisor -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                        <!-- Rol -->
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Rol del Usuario</label>
                             <div class="relative">
                                 <select name="role_id" id="role_id" onchange="toggleSupervisor()"
                                     class="w-full pl-4 pr-10 py-3 rounded-xl bg-white border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 appearance-none cursor-pointer shadow-sm">
                                     @foreach($roles as $role)
+                                        @php
+                                            // Traducción manual para el Select
+                                            $roleName = match($role->name) {
+                                                'admin' => 'Administrador General',
+                                                'supervisor' => 'Supervisor de Zona',
+                                                'mantenimiento' => 'Técnico de Soporte',
+                                                'user' => 'Guardia de Seguridad',
+                                                default => ucfirst($role->name),
+                                            };
+                                        @endphp
                                         <option value="{{ $role->id }}" {{ $user->role_id == $role->id ? 'selected' : '' }}>
-                                            {{ ucfirst($role->name) }}
+                                            {{ $roleName }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -84,7 +90,6 @@
                             </div>
                         </div>
 
-                        <!-- Supervisor -->
                         <div id="div_supervisor">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Supervisor Asignado</label>
                             <div class="relative">
@@ -105,7 +110,6 @@
                         </div>
                     </div>
 
-                    <!-- Contraseña -->
                     <div class="pt-4 border-t border-gray-100">
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Nueva Contraseña <span class="text-gray-400 font-normal">(Opcional)</span></label>
                         <input type="password" name="password" 
@@ -113,7 +117,6 @@
                             placeholder="Dejar en blanco para mantener la actual">
                     </div>
 
-                    <!-- Botón Submit -->
                     <div class="pt-4">
                         <button type="submit" class="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transform transition hover:-translate-y-1 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                             Guardar Cambios
@@ -130,12 +133,11 @@
         const roleSelect = document.getElementById('role_id');
         const supervisorDiv = document.getElementById('div_supervisor');
         
-        // Obtenemos el texto de la opción seleccionada
+        // Obtenemos el texto de la opción seleccionada y lo pasamos a minúsculas
         const selectedText = roleSelect.options[roleSelect.selectedIndex].text.toLowerCase();
         
-        // Lógica: Si es 'supervisor' o 'admin', generalmente no necesitan un supervisor asignado
-        // (Ajusta esta lógica si tus supervisores sí tienen jefes supervisores)
-        if (selectedText.includes('supervisor') || selectedText.includes('admin')) {
+        // Lógica actualizada: Si dice 'administrador' o 'supervisor', ocultamos
+        if (selectedText.includes('administrador') || selectedText.includes('supervisor')) {
             supervisorDiv.style.display = 'none';
         } else {
             supervisorDiv.style.display = 'block';

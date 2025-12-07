@@ -18,10 +18,10 @@
         </a>
     </div>
 
-    {{-- Tarjeta Principal Glass --}}
-    <div class="glass-panel bg-white/80 backdrop-blur-xl border border-white/50 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden relative">
+    {{-- Tarjeta Principal --}}
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden relative">
         
-        {{-- Decoración superior --}}
+        {{-- Decoración --}}
         <div class="h-2 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
 
         <div class="p-8 sm:p-10">
@@ -45,72 +45,78 @@
 
                 <div class="space-y-6">
                     
-                    <!-- Nombre -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Nombre Completo</label>
                         <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
-                            </div>
                             <input type="text" name="name" required 
-                                class="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 placeholder-gray-400" 
+                                class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 placeholder-gray-400" 
                                 placeholder="Ej: Juan Pérez">
                         </div>
                     </div>
 
-                    <!-- Email -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Correo Electrónico</label>
                         <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                                </svg>
-                            </div>
                             <input type="email" name="email" required 
-                                class="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 placeholder-gray-400" 
+                                class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 placeholder-gray-400" 
                                 placeholder="usuario@empresa.com">
                         </div>
                     </div>
 
-                    <!-- Contraseña -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Contraseña de Acceso</label>
                         <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                </svg>
-                            </div>
                             <input type="password" name="password" required 
-                                class="w-full pl-11 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 placeholder-gray-400" 
+                                class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 placeholder-gray-400" 
                                 placeholder="••••••••">
                         </div>
                         <p class="text-xs text-gray-400 mt-2 ml-1">Se recomienda usar al menos 8 caracteres.</p>
                     </div>
-                    <div class="mb-4">
-    <label class="block text-sm font-semibold text-gray-700 mb-2">Rol del Usuario</label>
-    <select name="role_id" id="role_id" class="w-full p-3 rounded-xl bg-gray-50 border border-gray-200" onchange="toggleSupervisor(this.value)">
-        @foreach($roles as $role)
-            <option value="{{ $role->id }}">{{ ucfirst($role->name) }}</option>
-        @endforeach
-    </select>
-</div>
 
-<div class="mb-4" id="div_supervisor">
-    <label class="block text-sm font-semibold text-gray-700 mb-2">Asignar Supervisor</label>
-    <select name="supervisor_id" class="w-full p-3 rounded-xl bg-gray-50 border border-gray-200">
-        <option value="">-- Sin Supervisor --</option>
-        @foreach($supervisors as $sup)
-            <option value="{{ $sup->id }}">{{ $sup->name }}</option>
-        @endforeach
-    </select>
-    <p class="text-xs text-gray-500 mt-1">El supervisor seleccionado podrá ver las cámaras de este usuario.</p>
-</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Rol del Usuario</label>
+                            <div class="relative">
+                                <select name="role_id" id="role_id" onchange="toggleSupervisor()"
+                                    class="w-full pl-4 pr-10 py-3 rounded-xl bg-white border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 appearance-none cursor-pointer shadow-sm">
+                                    @foreach($roles as $role)
+                                        @php
+                                            $roleName = match($role->name) {
+                                                'admin' => 'Administrador General',
+                                                'supervisor' => 'Supervisor de Zona',
+                                                'mantenimiento' => 'Técnico de Soporte',
+                                                'user' => 'Guardia de Seguridad',
+                                                default => ucfirst($role->name),
+                                            };
+                                        @endphp
+                                        <option value="{{ $role->id }}">{{ $roleName }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+                        </div>
 
-                    <!-- Botón Submit -->
+                        <div id="div_supervisor">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Supervisor Asignado</label>
+                            <div class="relative">
+                                <select name="supervisor_id" 
+                                    class="w-full pl-4 pr-10 py-3 rounded-xl bg-white border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 appearance-none cursor-pointer shadow-sm">
+                                    <option value="">-- Sin Supervisor --</option>
+                                    @foreach($supervisors as $sup)
+                                        <option value="{{ $sup->id }}">{{ $sup->name }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-2">El supervisor podrá ver las cámaras de este usuario.</p>
+                        </div>
+                    </div>
+
                     <div class="pt-4">
                         <button type="submit" class="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transform transition hover:-translate-y-1 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                             Crear Usuario
@@ -121,4 +127,25 @@
         </div>
     </div>
 </div>
+
+<script>
+    function toggleSupervisor() {
+        const roleSelect = document.getElementById('role_id');
+        const supervisorDiv = document.getElementById('div_supervisor');
+        
+        // Obtenemos el texto de la opción seleccionada y lo pasamos a minúsculas
+        const selectedText = roleSelect.options[roleSelect.selectedIndex].text.toLowerCase();
+        
+        // Si es Admin o Supervisor, ocultamos el campo de jefe
+        if (selectedText.includes('administrador') || selectedText.includes('supervisor')) {
+            supervisorDiv.style.display = 'none';
+        } else {
+            supervisorDiv.style.display = 'block';
+        }
+    }
+
+    // Ejecutar al cargar para establecer el estado inicial
+    document.addEventListener('DOMContentLoaded', toggleSupervisor);
+</script>
+
 @endsection
