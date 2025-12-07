@@ -12,6 +12,15 @@
         'mantenimiento' => 'mantenimiento.',
         default => 'user.',
     };
+
+    // Configuración visual para el selector de Admin
+    $roleLabels = [
+        'mantenimiento' => '🛠️ Personal de Mantenimiento',
+        'supervisor'    => '👀 Supervisores',
+        'user'          => '👤 Usuarios / Guardias',
+        'admin'         => '🛡️ Administradores'
+    ];
+    $priorityOrder = ['mantenimiento', 'supervisor', 'user', 'admin'];
 @endphp
 
 <div class="max-w-2xl mx-auto">
@@ -56,23 +65,19 @@
 
                 <div class="space-y-6">
                     
-                    <!-- Nombre -->
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Nombre del Dispositivo</label>
                         <input type="text" name="name" value="{{ old('name', $camera->name) }}" required 
                             class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 placeholder-gray-400">
                     </div>
 
-                    <!-- Grid IP y Estado -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- IP -->
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Dirección IP / URL</label>
                             <input type="text" name="ip" value="{{ old('ip', $camera->ip) }}" required 
                                 class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 font-mono text-sm">
                         </div>
 
-                        <!-- Estatus -->
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Estado Operativo</label>
                             <div class="relative">
@@ -88,16 +93,13 @@
                         </div>
                     </div>
 
-                    <!-- Ubicación y Grupo -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Ubicación -->
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Ubicación Física</label>
                             <input type="text" name="location" value="{{ old('location', $camera->location) }}" 
                                 class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700">
                         </div>
 
-                        <!-- Grupo -->
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Grupo / Zona</label>
                             <input type="text" name="group" value="{{ old('group', $camera->group) }}" 
@@ -106,35 +108,42 @@
                         </div>
                     </div>
 
-                    {{-- CAMPO REASIGNAR DUEÑO (ADMIN Y MANTENIMIENTO) --}}
-                    @if(($userRole === 'admin' || $userRole === 'mantenimiento') && isset($users))
+                    {{-- SELECTOR DE DUEÑO (SOLO PARA ADMIN) --}}
+                    @if($userRole === 'admin' && isset($usersByRole) && count($usersByRole) > 0)
                         <div class="pt-4 border-t border-gray-100">
                             <label class="block text-sm font-semibold text-gray-700 mb-2">
                                 <span class="flex items-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                     </svg>
-                                    Propietario Asignado (Reasignar)
+                                    Reasignar Propietario
                                 </span>
                             </label>
                             <div class="relative">
                                 <select name="user_id" 
                                     class="w-full pl-4 pr-10 py-3 rounded-xl bg-indigo-50 border border-indigo-100 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-gray-700 appearance-none cursor-pointer">
-                                    @foreach($users as $u)
-                                        <option value="{{ $u->id }}" {{ $camera->user_id == $u->id ? 'selected' : '' }}>
-                                            {{ $u->name }} ({{ $u->email }})
-                                        </option>
+                                    
+                                    @foreach($priorityOrder as $roleKey)
+                                        @if(isset($usersByRole[$roleKey]) && $usersByRole[$roleKey]->count() > 0)
+                                            <optgroup label="{{ $roleLabels[$roleKey] }}">
+                                                @foreach($usersByRole[$roleKey] as $u)
+                                                    <option value="{{ $u->id }}" {{ $camera->user_id == $u->id ? 'selected' : '' }}>
+                                                        {{ $u->name }}
+                                                    </option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endif
                                     @endforeach
+
                                 </select>
                                 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-indigo-400">
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                 </div>
                             </div>
-                            <p class="text-xs text-gray-500 mt-2 ml-1">Selecciona un nuevo usuario para transferir esta cámara.</p>
+                            <p class="text-xs text-gray-500 mt-2 ml-1">Cambiar el propietario transferirá el acceso de visualización.</p>
                         </div>
                     @endif
 
-                    <!-- Botón Submit -->
                     <div class="pt-4">
                         <button type="submit" class="w-full py-3.5 px-4 bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white font-bold rounded-xl shadow-lg shadow-yellow-500/30 transform transition hover:-translate-y-1 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
                             Guardar Cambios

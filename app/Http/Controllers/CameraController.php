@@ -6,20 +6,23 @@ use App\Models\Camera;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class CameraController extends Controller
 {
+    use AuthorizesRequests;
+
     public function index(Request $request)
     {
         $user = Auth::user();
         $roleName = $user->role->name ?? 'user';
         $query = Camera::with('user');
 
-        // 1. SOLO ADMIN: Ve TODAS las cámaras
+        // 1. ADMIN: Ve todo
         if ($roleName === 'admin') {
-            // No aplicamos filtro, ve todo
+            // Sin filtro
         }
-        // 2. SUPERVISOR: Ve las suyas + las de sus subordinados
+        // 2. SUPERVISOR: Ve las suyas + equipo
         elseif ($roleName === 'supervisor') {
             $subordinateIds = $user->subordinates()->pluck('id');
             $query->where(function ($q) use ($user, $subordinateIds) {
@@ -27,33 +30,31 @@ class CameraController extends Controller
                     ->orWhereIn('user_id', $subordinateIds);
             });
         }
-        // 3. MANTENIMIENTO Y USUARIO: Solo ven las que el admin les haya asignado (su user_id)
+        // 3. MANTENIMIENTO Y USUARIOS: Solo ven las suyas
         else {
             $query->where('user_id', $user->id);
         }
 
-        $cameras = $query->paginate(12);
+        $cameras = $query->orderBy('created_at', 'desc')->paginate(12);
+
         return view('cameras.index', compact('cameras'));
     }
 
     public function create()
     {
-        $userRole = Auth::user()->role->name;
+        // CAMBIO: Usamos $usersByRole para el Select agrupado
+        $usersByRole = [];
 
-        // SOLO Admin puede ver la lista para asignar dueño manualmente al inicio
-        $users = ($userRole === 'admin') ? \App\Models\User::all() : [];
+        if (Auth::user()->role->name === 'admin') {
+            // Traemos TODOS los usuarios y los agrupamos por rol
+            $usersByRole = User::with('role')
+                ->get()
+                ->groupBy(function ($user) {
+                    return $user->role->name;
+                });
+        }
 
-        return view('cameras.create', compact('users'));
-    }
-
-    public function edit(Camera $camera)
-    {
-        $userRole = Auth::user()->role->name;
-
-        // SOLO Admin puede reasignar dueño
-        $users = ($userRole === 'admin') ? \App\Models\User::all() : [];
-
-        return view('cameras.edit', compact('camera', 'users'));
+        return view('cameras.create', compact('usersByRole'));
     }
 
     public function store(Request $request)
@@ -68,59 +69,55 @@ class CameraController extends Controller
         ]);
 
         $user = Auth::user();
-        $roleName = $user->role->name;
 
-        // Lógica de asignación de dueño
-        if ($roleName === 'admin') {
-            // Admin puede elegir a cualquiera, o asignársela a sí mismo si no eligió nada
-            $ownerId = !empty($request->user_id) ? $request->user_id : $user->id;
-        } elseif ($roleName === 'mantenimiento') {
-            // MANTENIMIENTO: Se asigna AUTOMÁTICAMENTE al Admin principal
-            // Buscamos al primer usuario con rol 'admin'
-            $adminUser = \App\Models\User::whereHas('role', function ($q) {
-                $q->where('name', 'admin');
-            })->first();
-
-            // Si por alguna razón no hay admin, fallback al usuario actual (pero esto no debería pasar)
-            $ownerId = $adminUser ? $adminUser->id : $user->id;
+        // LÓGICA DE ASIGNACIÓN:
+        if ($user->role->name === 'admin') {
+            // Admin decide el dueño, o se la queda él
+            $ownerId = $request->user_id ?? $user->id;
         } else {
-            // Otros roles (si tuvieran permiso de crear): Se asignan a sí mismos
+            // MANTENIMIENTO: SE LA AUTO-ASIGNA SIEMPRE
             $ownerId = $user->id;
         }
 
         Camera::create([
-            ...$validated,
-            'user_id' => $ownerId,
+            'name'     => $validated['name'],
+            'ip'       => $validated['ip'],
+            'location' => $validated['location'],
+            'status'   => $validated['status'],
+            'group'    => $validated['group'],
+            'user_id'  => $ownerId,
         ]);
 
-        // Redirección
-        $prefix = match ($roleName) {
-            'admin' => 'admin.',
-            'supervisor' => 'supervisor.',
-            'mantenimiento' => 'mantenimiento.',
-            default => 'user.',
-        };
-
-        return redirect()->route($prefix . 'cameras.index')
+        return redirect()->route($this->getRoutePrefix() . 'cameras.index')
             ->with('success', 'Cámara registrada correctamente.');
     }
 
     public function show(Camera $camera)
     {
+        $this->authorize('view', $camera);
         return view('cameras.show', compact('camera'));
     }
 
-    
+    public function edit(Camera $camera)
+    {
+        $this->authorize('update', $camera);
+
+        $usersByRole = [];
+
+        if (Auth::user()->role->name === 'admin') {
+            $usersByRole = User::with('role')
+                ->get()
+                ->groupBy(function ($user) {
+                    return $user->role->name;
+                });
+        }
+
+        return view('cameras.edit', compact('camera', 'usersByRole'));
+    }
 
     public function update(Request $request, Camera $camera)
     {
-        $user = Auth::user();
-        $userRole = $user->role->name;
-
-        // Permisos para editar
-        if ($userRole !== 'admin' && $userRole !== 'mantenimiento' && $camera->user_id !== $user->id) {
-            abort(403, 'No autorizado');
-        }
+        $this->authorize('update', $camera);
 
         $validated = $request->validate([
             'name'     => 'required|string|max:255',
@@ -131,26 +128,35 @@ class CameraController extends Controller
             'user_id'  => 'nullable|exists:users,id'
         ]);
 
-        // Solo Admin y Mantenimiento pueden cambiar el dueño
-        if ($userRole !== 'admin' && $userRole !== 'mantenimiento') {
+        // Solo el admin puede cambiar el dueño en la edición
+        if (Auth::user()->role->name !== 'admin') {
             unset($validated['user_id']);
         }
 
         $camera->update($validated);
 
-        $prefix = match ($userRole) {
+        return redirect()->route($this->getRoutePrefix() . 'cameras.index')
+            ->with('success', 'Configuración actualizada.');
+    }
+
+    public function destroy(Camera $camera)
+    {
+        $this->authorize('delete', $camera);
+
+        $camera->delete();
+
+        return redirect()->route($this->getRoutePrefix() . 'cameras.index')
+            ->with('success', 'Dispositivo eliminado.');
+    }
+
+    private function getRoutePrefix()
+    {
+        $role = Auth::user()->role->name ?? 'user';
+        return match ($role) {
             'admin' => 'admin.',
             'supervisor' => 'supervisor.',
             'mantenimiento' => 'mantenimiento.',
             default => 'user.',
         };
-
-        return redirect()->route($prefix . 'cameras.index')->with('success', 'Cámara actualizada.');
-    }
-
-    public function destroy(Camera $camera)
-    {
-        $camera->delete();
-        return redirect()->back()->with('success', 'Eliminada');
     }
 }
