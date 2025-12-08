@@ -1,0 +1,22 @@
+[package]
+name = "luisgrdz/seguridad" # CAMBIA ESTO
+version = "0.1.0"
+description = "Proyecto Laravel en Wasmer"
+license = "MIT"
+
+[dependencies]
+"wasmer/php" = "^8.2"  # Usamos PHP 8.2 compilado a Wasm
+
+[fs]
+"/app" = "." # Mapea tu carpeta actual a /app dentro de Wasmer
+
+[command]
+# El comando para arrancar el servidor usando el servidor interno de PHP
+# (Ideal para pruebas rápidas en Wasmer Edge)
+name = "start"
+module = "wasmer/php:php"
+runner = "wasi"
+annotations = { wagi = { entrypoint = ["-S", "0.0.0.0:8080", "-t", "/app/public"] } }
+
+[[port]]
+port = 8080 # El puerto que Wasmer expondrá
