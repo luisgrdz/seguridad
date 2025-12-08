@@ -81,10 +81,10 @@ class CameraController extends Controller
 
         Camera::create([
             'name'     => $validated['name'],
-            'ip'       => $validated['ip'],
-            'location' => $validated['location'],
-            'status'   => $validated['status'],
-            'group'    => $validated['group'],
+            'ip'       => $validated['ip'] ?? null,
+            'location' => $validated['location'] ?? null,
+            'status'   => $validated['status'] ?? null,
+            'group'    => $validated['group'] ?? null,
             'user_id'  => $ownerId,
         ]);
 
