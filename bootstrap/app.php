@@ -14,15 +14,18 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
 
-        // --- AGREGA ESTA LÍNEA PARA ARREGLAR EL HTTPS EN RENDER ---
+        // Fix para Proxies (Render/Heroku/etc)
         $middleware->trustProxies(at: '*');
-        // ----------------------------------------------------------
 
+        // REGISTRO DE ALIAS
         $middleware->alias([
-            'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+            // Alias del sistema (aseguramos que auth apunte al oficial)
+            'auth' => \Illuminate\Auth\Middleware\Authenticate::class,
+
+            // Tus alias personalizados
             'role' => \App\Http\Middleware\CheckRole::class,
             'no_cache' => \App\Http\Middleware\NoCache::class,
-            'checkRole' => \App\Http\Middleware\CheckRole::class,
+            'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

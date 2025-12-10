@@ -8,7 +8,7 @@ use App\Http\Controllers\PersonalController;
 use App\Http\Controllers\CameraController;
 use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\IncidentController; // <--- AGREGADO
+use App\Http\Controllers\IncidentController; 
 use App\Models\Camera;
 
 Route::view('/', 'index')->name('index');
