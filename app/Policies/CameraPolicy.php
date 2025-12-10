@@ -13,7 +13,8 @@ class CameraPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        // Solo usuarios activos y con roles reconocidos pueden ver el listado
+        return $user->status && in_array($user->role->name, ['admin', 'supervisor', 'mantenimiento', 'user']);
     }
 
     /**

@@ -37,14 +37,23 @@ class PersonalController extends Controller
             'supervisor_id' => 'nullable|exists:users,id'
         ]);
 
-        User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'role_id'  => $request->role_id,
-            'supervisor_id' => $request->supervisor_id,
-            'status'   => 1,
-            'password' => Hash::make($request->password),
-        ]);
+        // --- CAMBIO DE SEGURIDAD ---
+        // Instanciamos el modelo manualmente
+        $user = new User();
+
+        // Asignamos campos seguros (que podrían estar en fillable)
+        $user->name = $request->name;
+        $user->email = $request->email;
+        $user->password = Hash::make($request->password);
+        $user->status = 1; // Por defecto activo
+
+        // Asignamos explícitamente los campos protegidos (NO están en fillable)
+        // Esto asegura que solo el Admin (quien usa este controlador) pueda tocarlos.
+        $user->role_id = $request->role_id;
+        $user->supervisor_id = $request->supervisor_id;
+
+        // Guardamos en BD
+        $user->save();
 
         return redirect()->route('admin.personal.index')
             ->with('success', 'Usuario creado correctamente.');
@@ -72,18 +81,22 @@ class PersonalController extends Controller
             'supervisor_id' => 'nullable|exists:users,id'
         ]);
 
-        $data = [
-            'name'  => $request->name,
-            'email' => $request->email,
-            'role_id' => $request->role_id,
-            'supervisor_id' => $request->supervisor_id
-        ];
+        // Asignación manual de campos
+        $user->name = $request->name;
+        $user->email = $request->email;
 
-        if ($request->password) {
-            $data['password'] = Hash::make($request->password);
+        // Solo actualizamos password si viene en el request
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
         }
 
-        $user->update($data);
+        // --- CAMBIO DE SEGURIDAD ---
+        // Asignación explícita de roles y supervisor
+        $user->role_id = $request->role_id;
+        $user->supervisor_id = $request->supervisor_id;
+
+        // Guardamos los cambios
+        $user->save();
 
         return redirect()->route('admin.personal.index')
             ->with('success', 'Usuario actualizado.');

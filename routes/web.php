@@ -15,7 +15,9 @@ Route::view('/', 'index')->name('index');
 
 // Auth
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+Route::post('/login', [AuthController::class, 'login'])
+    ->middleware('throttle:5,1') // Máximo 5 intentos por minuto
+    ->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 
@@ -109,3 +111,4 @@ Route::middleware(['auth', 'no_cache', 'role:mantenimiento'])
     });
 
 Route::resource('incidents', IncidentController::class);
+

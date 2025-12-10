@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log; 
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
@@ -23,14 +24,14 @@ class CheckRole
             $user->load('role');
         }
 
-        // 3. Validación de seguridad: ¿El usuario tiene rol asignado?
+        // 3. Validación de seguridad
         if (!$user->role) {
             Auth::logout();
-            return abort(403, 'Error crítico: El usuario no tiene un rol asignado en la base de datos.');
+            // A04 FIX: Mensaje genérico al usuario, detalle solo en logs internos si fuera necesario
+            return abort(403, 'Error de autorización.');
         }
 
-        // 4. Normalizar datos (Minúsculas y sin espacios extra)
-        // Ejemplo: " Admin " -> "admin"
+        // 4. Normalizar datos
         $userRoleName = strtolower(trim($user->role->name));
 
         foreach ($roles as $role) {
@@ -39,10 +40,16 @@ class CheckRole
             }
         }
 
-        // 5. Si falló la validación, mostramos QUÉ falló para depurar
-        // Esto te dirá en pantalla: "Tu rol es: admin. Se requiere: supervisor"
-        $requiredRoles = implode(', ', $roles);
+        // --- A04 FIX: SOLUCIÓN DE SEGURIDAD ---
 
-        return abort(403, "Acceso denegado. Tu rol actual es: '{$userRoleName}'. Esta sección requiere uno de estos roles: '{$requiredRoles}'.");
+        // ANTES (Inseguro): Le decíamos al atacante qué roles existen.
+        // return abort(403, "Acceso denegado. Tu rol actual es: '{$userRoleName}'. Esta sección requiere: " . implode(', ', $roles));
+
+        // AHORA (Seguro):
+        // 1. Guardamos el detalle en el log del sistema (storage/logs/laravel.log) para tus ojos solamente.
+        Log::warning("Acceso denegado 403. Usuario ID: {$user->id} ({$userRoleName}) intentó acceder a ruta protegida para: " . implode(', ', $roles));
+
+        // 2. Al usuario le mostramos un error estándar sin detalles sensibles.
+        return abort(403);
     }
 }

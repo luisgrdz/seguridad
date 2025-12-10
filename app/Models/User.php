@@ -21,9 +21,16 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role_id',
         'status',
+        // Quitamos role_id y supervisor_id 
+    ];
+
+    // Opcional: Define explícitamente qué NO se puede tocar masivamente
+    protected $guarded = [
+        'id',
+        'role_id',
         'supervisor_id',
+        'remember_token',
     ];
 
     /**
