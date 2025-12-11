@@ -1,7 +1,12 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\app;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Model;
 use App\Http\Controllers\AuthController;
+use Illuminate\Support\Facades\Config;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PersonalController;
@@ -110,9 +115,7 @@ Route::middleware(['auth', 'no_cache', 'role:mantenimiento'])
         Route::resource('cameras', CameraController::class);
     });
 
-
-
-    Route::resource('incidents', IncidentController::class);
+Route::resource('incidents', IncidentController::class);
 
     Route::get('/prueba-diagnostico', function () {
     // 1. Forzar encendido de la protección
