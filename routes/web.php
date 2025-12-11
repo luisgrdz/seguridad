@@ -110,5 +110,44 @@ Route::middleware(['auth', 'no_cache', 'role:mantenimiento'])
         Route::resource('cameras', CameraController::class);
     });
 
-Route::resource('incidents', IncidentController::class);
 
+
+    Route::resource('incidents', IncidentController::class);
+
+    Route::get('/prueba-diagnostico', function () {
+    // 1. Forzar encendido de la protección
+    \Illuminate\Database\Eloquent\Model::preventLazyLoading(true);
+
+    // 2. Preguntar al sistema si REALMENTE está encendida
+    $estaProtegido = \Illuminate\Database\Eloquent\Model::preventsLazyLoading();
+
+    // 3. Buscar la cámara
+    $camera = \App\Models\Camera::whereNotNull('user_id')->first();
+
+    if (!$camera) return "ERROR: No hay cámaras con usuario asignado.";
+
+    // 4. Verificar si la relación 'user' ya vino cargada "mágicamente" (Eager Loading)
+    $yaEstabaCargada = $camera->relationLoaded('user');
+
+    echo "<h1>Diagnóstico de Seguridad</h1>";
+    echo "<ul>";
+    echo "<li><strong>¿Protección activada?:</strong> " . ($estaProtegido ? '✅ SÍ' : '❌ NO') . "</li>";
+    echo "<li><strong>¿Relación 'user' precargada?:</strong> " . ($yaEstabaCargada ? '⚠️ SÍ (Esto evitaría el error)' : '✅ NO (Correcto)') . "</li>";
+    echo "</ul>";
+
+    echo "<h3>Intentando acceder a la relación prohibida...</h3>";
+
+    try {
+        // AQUÍ ES DONDE DEBERÍA EXPLOTAR
+        $nombre = $camera->user->name;
+
+        // Si llega aquí, falló la seguridad
+        echo "<h2 style='color:red'>❌ FALLÓ: Se permitió el acceso. Nombre: {$nombre}</h2>";
+        echo "<p>Laravel ignoró la restricción. Posible causa: Versión del framework o configuración global sobrescrita.</p>";
+    } catch (\Illuminate\Database\LazyLoadingViolationException $e) {
+        // Si entra aquí, ¡FUNCIONÓ!
+        echo "<h2 style='color:green'>✅ ÉXITO: Se bloqueó el acceso.</h2>";
+        echo "<p>Mensaje capturado: <em>" . $e->getMessage() . "</em></p>";
+    } catch (\Exception $e) {
+        echo "<h2>⚠️ Error inesperado: " . $e->getMessage() . "</h2>";
+    }});
