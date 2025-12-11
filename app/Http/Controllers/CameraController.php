@@ -12,32 +12,23 @@ class CameraController extends Controller
 {
     use AuthorizesRequests;
 
-    public function index(Request $request)
+    public function index()
     {
-        $user = Auth::user();
-        $roleName = $user->role->name ?? 'user';
-        $query = Camera::with('user');
+        // 1. Calcular contadores (para que no fallen con la paginación)
+        $onlineCount = \App\Models\Camera::where('status', true)->count();
+        $offlineCount = \App\Models\Camera::where('status', false)->count();
 
-        // 1. ADMIN: Ve todo
-        if ($roleName === 'admin') {
-            // Sin filtro
-        }
-        // 2. SUPERVISOR: Ve las suyas + equipo
-        elseif ($roleName === 'supervisor') {
-            $subordinateIds = $user->subordinates()->pluck('id');
-            $query->where(function ($q) use ($user, $subordinateIds) {
-                $q->where('user_id', $user->id)
-                    ->orWhereIn('user_id', $subordinateIds);
-            });
-        }
-        // 3. MANTENIMIENTO Y USUARIOS: Solo ven las suyas
-        else {
-            $query->where('user_id', $user->id);
-        }
+        // 2. Cargar Cámaras + Usuario + Rol del Usuario
+        $cameras = \App\Models\Camera::with('user.role') // <--- ¡AQUÍ ESTÁ LA SOLUCIÓN!
+            ->orderBy('created_at', 'desc')
+            ->paginate(12);
 
-        $cameras = $query->orderBy('created_at', 'desc')->paginate(12);
-
-        return view('cameras.index', compact('cameras'));
+        // 3. Pasar todo a la vista
+        return view('cameras.index', [
+            'cameras' => $cameras,
+            'onlineCount' => $onlineCount,
+            'offlineCount' => $offlineCount
+        ]);
     }
 
     public function create()
