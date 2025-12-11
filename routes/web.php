@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\app;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Config;
@@ -155,29 +156,7 @@ Route::get('/prueba-lazy-final', function () {
     }
 });
 
-// PRUEBA 1: Lazy Loading (N+1)
-Route::get('/test-lazy', function () {
-    echo "<h2>Prueba de Lazy Loading (Carga Perezosa)</h2>";
-    try {
-        $user = User::first();
-        if (!$user) return "⚠️ Crea un usuario primero para probar.";
 
-        // Intentamos acceder a la relación 'role' sin haber usado with('role')
-        // Si la seguridad funciona, esto debe lanzar una excepción.
-        $role = $user->role;
-
-        return '<div style="color:red; border:2px solid red; padding:10px;">
-                    ❌ FALLO: Se permitió el Lazy Loading. <br>
-                    La relación se cargó sin bloquearse.
-                </div>';
-    } catch (\Illuminate\Database\LazyLoadingViolationException $e) {
-        return '<div style="color:green; border:2px solid green; padding:10px; background:#e6fffa;">
-                    ✅ <strong>ÉXITO: Lazy Loading Bloqueado.</strong><br>
-                    Laravel detuvo la consulta correctamente.<br>
-                    <small>Error capturado: ' . $e->getMessage() . '</small>
-                </div>';
-    }
-});
 
 // PRUEBA 2: Asignación Masiva (Mass Assignment)
 Route::get('/test-mass', function () {
@@ -207,43 +186,3 @@ Route::get('/test-mass', function () {
     }
 });
 
-Route::get('/debug-lazy', function () {
-    // 1. Limpiamos cualquier estado previo
-    Model::preventLazyLoading(false); // Reseteamos
-
-    // 2. Aplicamos la protección MANUALMENTE aquí para probar aislamiento
-    Model::preventLazyLoading(true);
-
-    $user = User::first();
-
-    if (!$user) {
-        return ['error' => 'No hay usuarios en la BD. Crea uno para probar.'];
-    }
-
-    return [
-        '1. Estado del Modelo' => [
-            '¿La protección está activada globalmente?' => Model::preventsLazyLoading() ? 'SÍ (Correcto)' : 'NO (Error grave)',
-            'Clase del Usuario' => get_class($user),
-            '¿La relación "role" ya está cargada?' => $user->relationLoaded('role') ? 'SÍ (No se consultará)' : 'NO (Debería consultar)',
-            'ID del Rol (Foreign Key)' => $user->role_id,
-        ],
-        '2. Prueba de Fuego' => [
-            'Intento de acceso' => 'Leyendo $user->role...',
-            'Resultado' => (function () use ($user) {
-                try {
-                    // INTENTO DE VIOLACIÓN
-                    $role = $user->role;
-                    return "❌ FALLO: Se leyó el rol '{$role?->name}' sin error.";
-                } catch (\Illuminate\Database\LazyLoadingViolationException $e) {
-                    return "✅ ÉXITO: Se capturó la excepción LazyLoadingViolationException.";
-                } catch (\Exception $e) {
-                    return "⚠️ OTRO ERROR: " . get_class($e) . " - " . $e->getMessage();
-                }
-            })(),
-        ],
-        '3. Verificación de AppServiceProvider' => [
-            'Entorno' => app()->environment(),
-            'Debug' => config('app.debug'),
-        ]
-    ];
-});

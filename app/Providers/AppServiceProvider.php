@@ -2,30 +2,41 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\App;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /**
+     * Register any application services.
+     */
     public function register(): void
     {
         //
     }
 
+    /**
+     * Bootstrap any application services.
+     */
     public function boot(): void
     {
-        // 1. Forzar HTTPS...
-        if (App::isProduction()) {
-            URL::forceScheme('https');
-        }
+        // Configuración de Strict Mode (usando la Facade App importada arriba)
+        Model::shouldBeStrict(! App::isProduction());
 
-        // 2. Prevenir Lazy Loading (CAMBIO AQUÍ)
-        // Quitamos el "! App::isProduction()" y ponemos "true" directo.
-        Model::preventLazyLoading(true);
+        // Detector de la consulta SQL sospechosa
+        DB::listen(function ($query) {
+            // Buscamos si la consulta contiene "select * from roles"
+            if (str_contains($query->sql, 'select * from roles')) {
 
-        // Opcional: Impedir asignación masiva silenciosa
-        Model::preventSilentlyDiscardingAttributes(true);
+                // Registramos la alerta en el log
+                Log::critical('ALERTA: Consulta a ROLES detectada en: ' . request()->url());
+
+                // Opcional: Descomenta la siguiente línea para detener la app y ver el error en pantalla
+                // dd('Consulta detectada:', $query->sql);
+            }
+        });
     }
 }
