@@ -16,17 +16,16 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // 1. Forzar HTTPS en producción (OWASP A05)
-        Model::preventLazyLoading(true);
+        // 1. Forzar HTTPS...
         if (App::isProduction()) {
             URL::forceScheme('https');
         }
 
-        // 2. Prevenir Lazy Loading (OWASP A05)
-        // Esto protege contra problemas de rendimiento y ataques de DoS por consultas masivas.
-        // Aunque tu versión beta actual no lo detecte, este es el código correcto.
+        // 2. Prevenir Lazy Loading (CAMBIO AQUÍ)
+        // Quitamos el "! App::isProduction()" y ponemos "true" directo.
+        Model::preventLazyLoading(true);
 
-        // Opcional: Impedir asignación masiva silenciosa (Lanza error si intentas guardar un campo no permitido)
-        Model::preventSilentlyDiscardingAttributes(! App::isProduction());
+        // Opcional: Impedir asignación masiva silenciosa
+        Model::preventSilentlyDiscardingAttributes(true);
     }
 }
