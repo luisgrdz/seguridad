@@ -112,3 +112,14 @@ Route::middleware(['auth', 'no_cache', 'role:mantenimiento'])
 
 Route::resource('incidents', IncidentController::class);
 
+// routes/web.php
+
+Route::get('/prueba-lazy', function () {
+    // 1. Obtenemos el primer usuario SIN cargar sus roles (sin usar with)
+    $user = \App\Models\User::first();
+
+    // 2. Intentamos acceder a la relación 'roles'.
+    // Si preventLazyLoading está ACTIVO, esto DEBE fallar con una excepción 500.
+    // Si ves los roles, la protección NO está funcionando.
+    return $user->roles;
+});
