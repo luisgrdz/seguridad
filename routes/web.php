@@ -117,72 +117,40 @@ Route::middleware(['auth', 'no_cache', 'role:mantenimiento'])
 
 Route::resource('incidents', IncidentController::class);
 
-// routes/web.php
-
-Route::get('/estado-seguridad', function () {
-    return [
-        'Tu Entorno Actual (App::environment)' => App::environment(),
-        '¿Es Producción? (App::isProduction)' => App::isProduction() ? 'SÍ' : 'NO',
-        '¿Bloqueo Lazy Loading Activo?' => Model::preventsLazyLoading() ? 'ACTIVO (Seguro)' : 'INACTIVO (Peligro)',
-    ];
-});
-
-Route::get('/prueba-lazy-final', function () {
-    // 1. Forzamos la configuración para estar 100% seguros
+    Route::get('/prueba-diagnostico', function () {
+    // 1. Forzar encendido de la protección
     \Illuminate\Database\Eloquent\Model::preventLazyLoading(true);
 
-    echo "<h1>Prueba Final de Seguridad</h1>";
+    // 2. Preguntar al sistema si REALMENTE está encendida
+    $estaProtegido = \Illuminate\Database\Eloquent\Model::preventsLazyLoading();
+
+    // 3. Buscar la cámara
+    $camera = \App\Models\Camera::whereNotNull('user_id')->first();
+
+    if (!$camera) return "ERROR: No hay cámaras con usuario asignado.";
+
+    // 4. Verificar si la relación 'user' ya vino cargada "mágicamente" (Eager Loading)
+    $yaEstabaCargada = $camera->relationLoaded('user');
+
+    echo "<h1>Diagnóstico de Seguridad</h1>";
+    echo "<ul>";
+    echo "<li><strong>¿Protección activada?:</strong> " . ($estaProtegido ? '✅ SÍ' : '❌ NO') . "</li>";
+    echo "<li><strong>¿Relación 'user' precargada?:</strong> " . ($yaEstabaCargada ? '⚠️ SÍ (Esto evitaría el error)' : '✅ NO (Correcto)') . "</li>";
+    echo "</ul>";
+
+    echo "<h3>Intentando acceder a la relación prohibida...</h3>";
 
     try {
-        $user = \App\Models\User::first();
+        // AQUÍ ES DONDE DEBERÍA EXPLOTAR
+        $nombre = $camera->user->name;
 
-        if (!$user) return "Error: Crea un usuario primero.";
-
-        echo "Usuario: {$user->name}<br>";
-        echo "Intentando leer su ROL (Lazy Load)...<br>";
-
-        // CORRECCIÓN AQUÍ: Usamos 'role' (singular) que sí existe en tu User.php
-        $nombreRol = $user->role ? $user->role->name : 'Sin rol';
-
-        // Si el código llega aquí, la seguridad falló
-        return '<h2 style="color:red">❌ FALLO: Se permitió el acceso (Lazy Loading no bloqueado).</h2>';
+        // Si llega aquí, falló la seguridad
+        echo "<h2 style='color:red'>❌ FALLÓ: Se permitió el acceso. Nombre: {$nombre}</h2>";
+        echo "<p>Laravel ignoró la restricción. Posible causa: Versión del framework o configuración global sobrescrita.</p>";
     } catch (\Illuminate\Database\LazyLoadingViolationException $e) {
-        // Si entra aquí, la seguridad funcionó
-        return '<div style="border: 2px solid green; padding: 20px; background: #e6fffa; color: #047857;">
-                    <h1>✅ ¡BLOQUEO EXITOSO!</h1>
-                    <p>El sistema detuvo la consulta antes de que ocurriera.</p>
-                    <small>Laravel dijo: ' . $e->getMessage() . '</small>
-                </div>';
-    }
-});
-
-
-
-// PRUEBA 2: Asignación Masiva (Mass Assignment)
-Route::get('/test-mass', function () {
-    echo "<h2>Prueba de Asignación Masiva</h2>";
-    try {
-        // Intentamos crear un usuario inyectando 'role_id' o 'is_admin'
-        // que NO están en tu array $fillable.
-        // Si preventSilentlyDiscardingAttributes(true) funciona, esto debe fallar.
-        $user = new User([
-            'name' => 'Hacker Test',
-            'email' => 'hacker@test.com',
-            'password' => '12345678',
-            'role_id' => 999, // <--- Este campo está protegido (guarded) en tu User.php
-            'campo_inexistente' => 'valor peligroso' // <--- Campo basura
-        ]);
-
-        return '<div style="color:red; border:2px solid red; padding:10px;">
-                    ❌ FALLO: Se permitió la Asignación Masiva.<br>
-                    Laravel ignoró silenciosamente los campos prohibidos sin avisar.
-                </div>';
-    } catch (\Illuminate\Database\Eloquent\MassAssignmentException $e) {
-        return '<div style="color:green; border:2px solid green; padding:10px; background:#e6fffa;">
-                    ✅ <strong>ÉXITO: Asignación Masiva Bloqueada.</strong><br>
-                    Laravel detectó el intento de inyectar campos no permitidos.<br>
-                    <small>Error capturado: ' . $e->getMessage() . '</small>
-                </div>';
-    }
-});
-
+        // Si entra aquí, ¡FUNCIONÓ!
+        echo "<h2 style='color:green'>✅ ÉXITO: Se bloqueó el acceso.</h2>";
+        echo "<p>Mensaje capturado: <em>" . $e->getMessage() . "</em></p>";
+    } catch (\Exception $e) {
+        echo "<h2>⚠️ Error inesperado: " . $e->getMessage() . "</h2>";
+    }});
